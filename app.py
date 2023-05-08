@@ -6,9 +6,11 @@ import joblib
 from flask import Flask, request, jsonify
 from preprocessing import clean_review
 from flasgger import Swagger
+from flask_cors import CORS
 
 # Initialize Flask app
 app = Flask(__name__)
+CORS(app)
 swagger = Swagger(app)
 
 # Load ML model and pre-processing pipeline

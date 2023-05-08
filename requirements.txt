@@ -5,3 +5,4 @@ nltk==3.6.2
 numpy==1.20.3
 scikit-learn
 scipy==1.6.3
+flask-cors==3.0.10 
