@@ -12,7 +12,7 @@ RUN apt-get update && \
 RUN python -m pip install --upgrade pip
 
 # Install dependencies
-COPY requirements.txt .
+COPY requirements.txt /root/
 RUN pip install -r requirements.txt
 
 # Copy the pre-processing code, trained model, and other necessary files
