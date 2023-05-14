@@ -126,11 +126,13 @@ def submit_feedback():
     if feedback == 'correct':
         print(correct_predictions)
         correct_predictions += 1
-    
+
     # Calculate accuracy
     total_predictions = prediction_counter._value.get()
-    accuracy = correct_predictions / total_predictions
-
+    if total_predictions > 0:
+      accuracy = correct_predictions / total_predictions
+    else:
+      accuracy = 0
     # # Update prediction accuracy gauge
     prediction_accuracy.set(accuracy)
 
