@@ -27,22 +27,23 @@ model = joblib.load('c2_Classifier_Sentiment_Model')
 
 # Initialize the metrics
 # Counter metric to track the number of predictions made
-prediction_counter = Counter('predictions_total', 'Total number of predictions made')
+prediction_counter = Counter('predictions_total', 'Total number of predictions made',['sentiment'])
 user_feedback = Counter('user_feedback_total', 'Total number of user feedback received', ['result'])
 
 # Gauge
-prediction_accuracy = prometheus_client.Gauge('prediction_accuracy', 'Accuracy of sentiment predictions')
-
-correct_predictions = 0
+prediction_accuracy = prometheus_client.Gauge('prediction_accuracy', 'Accuracy of sentiment predictions', ['sentiment'])
 
 # Define custom buckets
 BUCKETS = [10, 50, 100, 150, 200]
 
 # Initialize histogram with custom buckets
-input_data_size_distribution = Histogram('input_data_size_distribution', 'Distribution of input data sizes', buckets=BUCKETS)
+input_data_size_distribution = Histogram('input_data_size_distribution', 'Distribution of input data sizes', ['sentiment'], buckets=BUCKETS)
 
 # Summary
 sentiment_summary = Summary('sentiment_summary', 'Summary of sentiments predicted by the model', ['sentiment'])
+sentiment = ''
+total_predictions = 0
+correct_predictions = 0
 
 # Define endpoint for making predictions
 @app.route('/', methods=['POST'])
@@ -77,15 +78,19 @@ def predict():
     vectorized_data = cv.transform([preprocessed_data]).toarray()
     predictions = model.predict(vectorized_data).tolist()
 
+    global total_predictions
+    if predictions:
+        total_predictions += 1
+    # Update Metrics
+    sentiment = 'positive' if predictions[0] == 1 else 'negative'
     # Increment the prediction counter
-    prediction_counter.inc()
+    prediction_counter.labels(sentiment=sentiment).inc()
 
     # Update input data size distribution histogram
-    input_data_size_distribution.observe(len(request.json['msg']))
+    input_data_size_distribution.labels(sentiment=sentiment).observe(len(request.json['msg']))
 
     # Track sentiment summary
-    for prediction in predictions:
-        sentiment_summary.labels(sentiment='positive' if prediction == 1 else 'negative').observe(1)
+    sentiment_summary.labels(sentiment=sentiment).observe(1)
 
     return {'predictions': predictions}
 
@@ -119,7 +124,7 @@ def submit_feedback():
     """
 
     global correct_predictions
-
+    global sentiment
     # Process the feedback 
     feedback = request.json['feedback']
     user_feedback.labels(result=feedback).inc()
@@ -128,13 +133,12 @@ def submit_feedback():
         correct_predictions += 1
 
     # Calculate accuracy
-    total_predictions = prediction_counter._value.get()
     if total_predictions > 0:
       accuracy = correct_predictions / total_predictions
     else:
       accuracy = 0
     # # Update prediction accuracy gauge
-    prediction_accuracy.set(accuracy)
+    prediction_accuracy.labels(sentiment=sentiment).set(accuracy)
 
     return {'message': 'Feedback submitted successfully'}
 
